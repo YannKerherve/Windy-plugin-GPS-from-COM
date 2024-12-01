@@ -1,4 +1,4 @@
-WINDY_API_KEY=t5zuzpSCDQ8onnI36HacUFU3Garf9H7x
+WINDY_API_KEY="t5zuzpSCDQ8onnI36HacUFU3Garf9H7x"
 
 OWNER="Yann Kerherve"
 
@@ -10,7 +10,7 @@ DIR=dist
 
 cd ./$DIR
 echo "Creating plugin archive..."
-echo '{"repositoryName": "https://github.com/YannKerherve/Windy-plugin-GPS-from-COM", "commitSha": "abcdef1", "repositoryOwner": "Yann Kerherve"}' > ./plugin-info.json
+echo "{\"repositoryName\": \"${REPOSITORY}\", \"commitSha\": \"${SHA}\", \"repositoryOwner\": \"${OWNER}\"}" > ./plugin-info.json
 jq -s '.[0] * .[1]' ./plugin.json ./plugin-info.json > ./plugin2.json
 rm ./plugin.json && mv ./plugin2.json ./plugin.json
 tar cf ./plugin.tar --exclude='./plugin.tar' .
