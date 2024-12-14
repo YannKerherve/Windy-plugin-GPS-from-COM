@@ -10,7 +10,7 @@ DIR=dist
 
 cd ./$DIR
 echo "Creating plugin archive..."
-echo "{\"repositoryName\": \"${REPOSITORY}\", \"commitSha\": \"${SHA}\", \"repositoryOwner\": \"${OWNER}\"}" > ./plugin-info.json
+                  echo "{\"repositoryName\": \"${{ github.repository }}\", \"commitSha\": \"${{ github.sha }}\", \"repositoryOwner\": \"${{ github.repository_owner }}\"}" > /tmp/plugin-info.json
 jq -s '.[0] * .[1]' ./plugin.json ./plugin-info.json > ./plugin2.json
 rm ./plugin.json && mv ./plugin2.json ./plugin.json
 tar cf ./plugin.tar --exclude='./plugin.tar' .
