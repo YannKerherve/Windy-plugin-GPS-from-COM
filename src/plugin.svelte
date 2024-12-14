@@ -118,22 +118,55 @@ if (latitude && longitude) {
 }
         }
     }
-function addMarkerOnMap(lat: latitude, lon: longitude) {
-  if (map) {
-    // Crée le marqueur avec la popup contenant une icône qui tourne
-    const marker = L.marker([lat, lon]).addTo(map)
-        .bindPopup(
-            `<div style="display: flex; align-items: center;">
-                <i class="fa-solid fa-location-crosshairs" style="font-size: 24px; animation: spin 2s linear infinite;"></i>
-                <span style="margin-left: 10px;">Position: ${lat.toFixed(6)}, ${lon.toFixed(6)}</span>
-            </div>`
-        );
+let markers = [];
 
-   
-} else {
-        console.error("Carte Windy non disponible !");
-    }
+function addMarkerOnMap(lat, lon) {
+  if (map) {
+    // Supprime tous les marqueurs existants
+    markers.forEach(marker => map.removeLayer(marker));
+    markers = [];
+
+    // Crée un nouveau marqueur avec un popup stylé
+    const marker = L.marker([lat, lon]).addTo(map)
+      .bindPopup(
+        `<div style="display: flex; align-items: center; font-family: Arial, sans-serif; font-size: 14px;">
+           <i class="fa-solid fa-map-pin" style="
+             font-size: 32px; 
+             color: #0b1c48; 
+             animation: bounce 1.5s infinite;
+             margin-right: 10px;"></i>
+           <div>
+             <strong>Coordinates:</strong><br>
+             Latitude: ${lat.toFixed(6)}<br>
+             Longitude: ${lon.toFixed(6)}
+           </div>
+         </div>`
+      ).openPopup();
+
+    // Ajoute le marqueur à la liste
+    markers.push(marker);
+
+    // Centrer la carte sur la nouvelle position
+    map.setView([lat, lon], 12);
+  }
 }
+
+// Ajout des styles CSS pour l'animation
+const style = document.createElement('style');
+style.innerHTML = `
+  @keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+      transform: translateY(0);
+    }
+    40% {
+      transform: translateY(-10px);
+    }
+    60% {
+      transform: translateY(-5px);
+    }
+  }
+`;
+document.head.appendChild(style);
 
     export const onopen = (_params: unknown) => {
         // Votre plugin a été ouvert avec des paramètres
