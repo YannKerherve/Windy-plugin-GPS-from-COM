@@ -15,6 +15,8 @@
            <p> GPS Data:</p>
            <p>  Latitude: {latitude}° </p>
            <p>  Longitude: {longitude}° </p>
+           <p> A programme by < a href="https://github.com/YannKerherve" > Yann Kerhervé </a>. Contact me for more information or questions.< /a > </p>
+
        
     {/if}
     {#if error}
