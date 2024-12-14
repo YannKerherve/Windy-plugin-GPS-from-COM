@@ -1,7 +1,7 @@
 {
-    "name": "windy-plugin-template",
-    "version": "3.0.0",
-    "description": "Template for developing Windy Plugins",
+    "name": "windy-plugin-GPS-from-COM",
+    "version": "1.0.0",
+    "description": "Gps from COM serial port",
     "main": "dist/plugin.min.js",
     "type": "module",
     "scripts": {
