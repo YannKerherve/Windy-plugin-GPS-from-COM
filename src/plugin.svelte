@@ -10,15 +10,27 @@
     >
     { title }
     </div>
-    <div class="button" on:click={connectSerial}>Connect to GPS</div>
-    <p> A programme by < a href="https://github.com/YannKerherve" >Yann Kerhervé</a>. Contact me for more information or questions.< /a > </p>
+<p> A plugin by <a href="https://github.com/YannKerherve">Yann Kerhervé</a></p>
+<img src="https://lh4.googleusercontent.com/Gfp6_nWcj-yyXgLeQfOXOMsunX9DfTNh-YaGMPJ_3nb4PeQ-waRjOKrc5DRQjlunSlPA7H7-T_dRaNMXynrt5lWu5L59Jxy7nSTr3hmSsfneP5DKEV8Rn_li56DCN8hmbA=w1280" width=100% />
+<p> Frame: $GNRMC ; 
+<label for="baudrate">Baud Rate:</label>
+<select name="baurate" id="baudrate">
+  <option value="115200">115200</option>
+  <option value="74880">74880</option>
+  <option value="57600">57600</option>
+  <option value="38400">38400</option>
+  <option value="19200">19200</option>
+  <option value="9600">9600</option>
+</select>    </p>
+<div class="button" on:click={connectSerial}>Connect to GPS</div>
+<div class="button" on:click={deco}>Disconnect</div>  
     {#if gpsData}
            <p> GPS Data:</p>
            <p>  Latitude: {latitude}° </p>
            <p>  Longitude: {longitude}° </p>
-           
-
-       
+           <p>  Sog: {cog}knt</p>
+          <p>  Cog: {sog}°</p>
+          <p>  Mag. Deviation: {dev}° {dir}</p>
     {/if}
     {#if error}
         <div class="error">
@@ -38,12 +50,18 @@
     let gpsData: string | null = null;
     let latitude: string | null = null;
     let longitude: string | null = null;
+    let cog: string | null = null;
+    let sog: string | null = null;
+    let dev: string | null = null;
+    let dir: string | null = null;
     let error: string | null = null;
-
+let markerLayer = L.layerGroup().addTo(map);
     // Stockage du port série pour nettoyage éventuel
     let port: SerialPort | null = null;
     let reader: ReadableStreamDefaultReader | null = null;
-
+    async function deco() {
+history.go(0);
+}
     // Fonction pour se connecter au port série
     async function connectSerial() {
         error = null; // Réinitialiser l'erreur à chaque tentative
@@ -51,7 +69,9 @@
             // Demande à l'utilisateur de sélectionner un port série
             port = await navigator.serial.requestPort();
             // Ouvrir la connexion avec le port sélectionné
-            await port.open({ baudRate: 115200 });
+const baudSelect = document.getElementById('baudrate'); // Sélectionne l'élément <select> par son ID
+const baudRate = baudSelect.value;
+            await port.open({ baudRate: parseInt(baudRate) });
 
             reader = port.readable.getReader();
 
@@ -99,17 +119,22 @@
         gpsData = data;
 
         // Extrait la latitude et la longitude d'une trame NMEA (GNRMC)
-        const regex = /\$GNRMC,\d+.\d+,[AV],(\d{2})(\d{2}.\d+),([NS]),(\d{3})(\d{2}.\d+),([EW])/;
+        const regex = /\$GPRMC,(\d{6}\.\d+),([AV]),(\d{2})(\d{2}\.\d+),([NS]),(\d{3})(\d{2}\.\d+),([EW]),(\d+\.\d+)?,(\d+\.\d+)?,(\d{6}),(-?\d+\.\d+)?,([EW])?,([ADEMSN])?\*/;
         const match = regex.exec(data);
 
         if (match) {
             // Conversion des coordonnées en format décimal
-            const latDeg = parseFloat(match[1]);
-            const latMin = parseFloat(match[2]);
-            const latHem = match[3];
-            const lonDeg = parseFloat(match[4]);
-            const lonMin = parseFloat(match[5]);
-            const lonHem = match[6];
+            const latDeg = parseFloat(match[3]);
+            const latMin = parseFloat(match[4]);
+            const latHem = match[5];
+            const lonDeg = parseFloat(match[6]);
+            const lonMin = parseFloat(match[7]);
+            const lonHem = match[8];
+            cog = match[9];
+            sog = match[10];
+            dev = match[12];
+            dir = match[13];
+
 
             latitude = ((latDeg + latMin / 60) * (latHem === 'S' ? -1 : 1)).toFixed(6);
             longitude = ((lonDeg + lonMin / 60) * (lonHem === 'E' ? -1 : 1)).toFixed(6);
@@ -118,55 +143,30 @@ if (latitude && longitude) {
 }
         }
     }
-let markers = [];
-
 function addMarkerOnMap(lat, lon) {
-  if (map) {
-    // Supprime tous les marqueurs existants
-    markers.forEach(marker => map.removeLayer(marker));
-    markers = [];
+    if (map) {
+        // Crée le marqueur avec la popup contenant une icône qui tourne
 
-    // Crée un nouveau marqueur avec un popup stylé
-    const marker = L.marker([lat, lon]).addTo(map)
-      .bindPopup(
-        `<div style="display: flex; align-items: center; font-family: Arial, sans-serif; font-size: 14px;">
-           <i class="fa-solid fa-map-pin" style="
-             font-size: 32px; 
-             color: #0b1c48; 
-             animation: bounce 1.5s infinite;
-             margin-right: 10px;"></i>
-           <div>
-             <strong>Coordinates:</strong><br>
-             Latitude: ${lat.toFixed(6)}<br>
-             Longitude: ${lon.toFixed(6)}
-           </div>
-         </div>`
-      ).openPopup();
+                const customIcon = L.divIcon({
+            className: 'custom-marker', // Classe CSS pour styliser
+            html: `
+                <div style="display: flex; align-items: center; flex-direction: column;">
+                    <div style="font-size: 24px; animation: spin 2s linear infinite; color: black;">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                    </div>
+                    </div>
+            `,
+            iconSize: [30, 42], // Taille approximative
+            iconAnchor: [15, 42], // Ancre pour alignement (base du marqueur)
+        });
 
-    // Ajoute le marqueur à la liste
-    markers.push(marker);
-
-    // Centrer la carte sur la nouvelle position
-    map.setView([lat, lon], 12);
-  }
+        // Ajoute le marqueur à la carte
+        //const marker = L.marker([lat, lon], { icon: customIcon }).addTo(map);
+        const marker = L.marker([lat, lon], { icon: customIcon }).addTo(markerLayer);   
+} else {
+        console.error("Carte Windy non disponible !");
+    }
 }
-
-// Ajout des styles CSS pour l'animation
-const style = document.createElement('style');
-style.innerHTML = `
-  @keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {
-      transform: translateY(0);
-    }
-    40% {
-      transform: translateY(-10px);
-    }
-    60% {
-      transform: translateY(-5px);
-    }
-  }
-`;
-document.head.appendChild(style);
 
     export const onopen = (_params: unknown) => {
         // Votre plugin a été ouvert avec des paramètres
@@ -197,3 +197,4 @@ document.head.appendChild(style);
         margin-top: 20px;
     }
 </style>
+
