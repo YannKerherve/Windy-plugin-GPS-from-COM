@@ -11,7 +11,8 @@
     { title }
     </div>
 <p> A plugin by <a href="https://github.com/YannKerherve">Yann Kerhervé</a></p>
-<img src="img.png" width=100% />
+<center>🛳️</center>
+
 <p> Frame: $GNRMC ; 
 <label for="baudrate">Baud Rate:</label>
 <select name="baurate" id="baudrate">
@@ -28,7 +29,7 @@
            <p> GPS Data:</p>
            <p>  Latitude: {latitude}° </p>
            <p>  Longitude: {longitude}° </p>
-           <p>  Sog: {cog}knt</p>
+           <p>  Sog: {cog} knt</p>
           <p>  Cog: {sog}°</p>
           <p>  Mag. Deviation: {dev}° {dir}</p>
     {/if}
