@@ -11,7 +11,7 @@
     { title }
     </div>
 <p> A plugin by <a href="https://github.com/YannKerherve">Yann Kerhervé</a></p>
-<img src="https://lh4.googleusercontent.com/Gfp6_nWcj-yyXgLeQfOXOMsunX9DfTNh-YaGMPJ_3nb4PeQ-waRjOKrc5DRQjlunSlPA7H7-T_dRaNMXynrt5lWu5L59Jxy7nSTr3hmSsfneP5DKEV8Rn_li56DCN8hmbA=w1280" width=100% />
+<img src="img.png" width=100% />
 <p> Frame: $GNRMC ; 
 <label for="baudrate">Baud Rate:</label>
 <select name="baurate" id="baudrate">
