@@ -119,7 +119,7 @@
         gpsData = data;
 
         // Extrait la latitude et la longitude d'une trame NMEA (GNRMC)
-        const regex = /\$GPRMC,(\d{6}\.\d+),([AV]),(\d{2})(\d{2}\.\d+),([NS]),(\d{3})(\d{2}\.\d+),([EW]),(\d+\.\d+)?,(\d+\.\d+)?,(\d{6}),(-?\d+\.\d+)?,([EW])?,([ADEMSN])?\*/;
+        const regex = /\$GNRMC,(\d{6}\.\d+),([AV]),(\d{2})(\d{2}\.\d+),([NS]),(\d{3})(\d{2}\.\d+),([EW]),(\d+\.\d+)?,(\d+\.\d+)?,(\d{6}),(-?\d+\.\d+)?,([EW])?,([ADEMSN])?\*/;
         const match = regex.exec(data);
 
         if (match) {
