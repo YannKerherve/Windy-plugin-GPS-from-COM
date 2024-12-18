@@ -56,13 +56,12 @@
     let dev: string | null = null;
     let dir: string | null = null;
     let error: string | null = null;
-let markerLayer = L.layerGroup().addTo(map);
+    let markerLayer = L.layerGroup().addTo(map);
     // Stockage du port série pour nettoyage éventuel
     let port: SerialPort | null = null;
     let reader: ReadableStreamDefaultReader | null = null;
-    async function deco() {
-history.go(0);
-}
+    async function deco() {history.go(0);}
+
     // Fonction pour se connecter au port série
     async function connectSerial() {
         error = null; // Réinitialiser l'erreur à chaque tentative
@@ -70,8 +69,8 @@ history.go(0);
             // Demande à l'utilisateur de sélectionner un port série
             port = await navigator.serial.requestPort();
             // Ouvrir la connexion avec le port sélectionné
-const baudSelect = document.getElementById('baudrate'); // Sélectionne l'élément <select> par son ID
-const baudRate = baudSelect.value;
+            const baudSelect = document.getElementById('baudrate'); // Sélectionne l'élément <select> par son ID
+            const baudRate = baudSelect.value;
             await port.open({ baudRate: parseInt(baudRate) });
 
             reader = port.readable.getReader();
@@ -146,6 +145,7 @@ if (latitude && longitude) {
     }
 function addMarkerOnMap(lat, lon) {
     if (map) {
+markerLayer.clearLayers();
         // Crée le marqueur avec la popup contenant une icône qui tourne
 
                 const customIcon = L.divIcon({
