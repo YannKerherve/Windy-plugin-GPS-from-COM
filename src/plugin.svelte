@@ -11,7 +11,7 @@
     { title }
     </div>
 <p> A plugin by <a href="https://github.com/YannKerherve">Yann Kerhervé</a></p>
-<center>🛳️</center>
+<p> <center>🛳️</center></p>
 
 <p> Frame: $GNRMC ; 
 <label for="baudrate">Baud Rate:</label>
@@ -138,7 +138,7 @@
 
 
             latitude = ((latDeg + latMin / 60) * (latHem === 'S' ? -1 : 1)).toFixed(6);
-            longitude = ((lonDeg + lonMin / 60) * (lonHem === 'E' ? -1 : 1)).toFixed(6);
+            longitude = ((lonDeg + lonMin / 60) * (lonHem === 'W' ? -1 : 1)).toFixed(6);
 if (latitude && longitude) {
     addMarkerOnMap(parseFloat(latitude), parseFloat(longitude));
 }
