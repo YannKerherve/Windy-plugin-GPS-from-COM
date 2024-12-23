@@ -27,6 +27,7 @@
 <div class="button" on:click={deco}>Disconnect</div>  
     {#if gpsData}
            <p> GPS Data:</p>
+           <p> {gpsData}</p>
            <p>  Latitude: {latitude}° </p>
            <p>  Longitude: {longitude}° </p>
            <p>  Sog: {cog} knt</p>
