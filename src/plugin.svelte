@@ -22,6 +22,7 @@
   <option value="38400">38400</option>
   <option value="19200">19200</option>
   <option value="9600">9600</option>
+  <option value="4800">4800</option>
 </select>    </p>
 <div class="button" on:click={connectSerial}>Connect to GPS</div>
 <div class="button" on:click={deco}>Disconnect</div>  
