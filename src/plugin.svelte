@@ -43,7 +43,7 @@
     import bcast from "@windy/broadcast";
     import { onDestroy, onMount } from 'svelte';
     import { map } from "@windy/map";
-    // Configuration
+    // Configuration1
     const title = 'GPS Position Plugin';
 let error = null;
 let port = null;
