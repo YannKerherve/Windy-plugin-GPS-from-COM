@@ -13,7 +13,7 @@
 <p> A plugin by <a href="https://github.com/YannKerherve">Yann Kerhervé</a></p>
 <p> <center>🛳️</center></p>
 
-<p> Frame: $GNRMC ; 
+<p> Frame: $GNRMC ;
 <label for="baudrate">Baud Rate:</label>
 <select name="baurate" id="baudrate">
   <option value="115200">115200</option>
@@ -25,22 +25,20 @@
   <option value="4800">4800</option>
 </select>    </p>
 <div class="button" on:click={connectSerial}>Connect to GPS</div>
-<div class="button" on:click={deco}>Disconnect</div>  
-    {#if gpsData}
+<div class="button" on:click={deco}>Disconnect</div>
+    {#if gpsState.lat && gpsState.lon}
            <p> GPS Data:</p>
-           <p> {gpsData}</p>
-           <p>  Latitude: {latitude}° </p>
-           <p>  Longitude: {longitude}° </p>
-           <p>  Sog: {cog} knt</p>
-          <p>  Cog: {sog}°</p>
-          <p>  Mag. Deviation: {dev}° {dir}</p>
+           <p>  Latitude: {gpsState.lat.toFixed(5)}° </p>
+           <p>  Longitude: {gpsState.lon.toFixed(5)}° </p>
+           <p>  Sog: {gpsState.sog ?? 'N/A'} knt</p>
+          <p>  Cog: {gpsState.cog ?? 'N/A'}°</p>
+<div class="button" on:click={centerMap(windyMap)}>Refocus ship</div>
+<div class="button" on:click={followship}>Follow ship</div>
     {/if}
-    {#if error}
-        <div class="error">
-            <p>Error: {error}</p>
-        </div>
-    {/if}
-</section>
+
+
+
+ </section>
 
 <script lang="ts">
     import bcast from "@windy/broadcast";
@@ -48,23 +46,26 @@
     import { map } from "@windy/map";
     // Configuration
     const title = 'GPS Position Plugin';
+let error = null;
+let port = null;
+let lineBuffer ='';
+let reader = null;
+let lastLat = null;
+let lastLon = null;
+let follow = 0;
+    let gpsState = {
+    lat: null,
+    lon: null,
+    cog: null,
+    sog: null,
+    courseVector: null,
+    trace: [],
+    following: false,
+};
 
-    // Variables pour stocker les données GPS et erreurs
-    let gpsData: string | null = null;
-    let latitude: string | null = null;
-    let longitude: string | null = null;
-    let cog: string | null = null;
-    let sog: string | null = null;
-    let dev: string | null = null;
-    let dir: string | null = null;
-    let error: string | null = null;
-    let markerLayer = L.layerGroup().addTo(map);
-    // Stockage du port série pour nettoyage éventuel
-    let port: SerialPort | null = null;
-    let reader: ReadableStreamDefaultReader | null = null;
-    async function deco() {history.go(0);}
+let windyMap;
+let tracePolyline = null;
 
-    // Fonction pour se connecter au port série
     async function connectSerial() {
         error = null; // Réinitialiser l'erreur à chaque tentative
         try {
@@ -75,20 +76,40 @@
             const baudRate = baudSelect.value;
             await port.open({ baudRate: parseInt(baudRate) });
 
-            reader = port.readable.getReader();
+const decoder = new TextDecoderStream();
+const inputDone = port.readable.pipeTo(decoder.writable);
+const inputStream = decoder.readable;
 
-            // Lire les données du port série en continu
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) {
-                    console.log('Lecture terminée');
-                    break; // Quitter si la lecture est terminée
-                }
+const reader = inputStream.getReader();
 
-                // Convertir les données en texte
-                const text = new TextDecoder().decode(value);
-                parseGPSData(text);
+lineBuffer = '';
+while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    lineBuffer += value;
+    let newlineIndex;
+    while ((newlineIndex = lineBuffer.indexOf('\n')) >= 0) {
+        const line = lineBuffer.slice(0, newlineIndex).trim();
+        lineBuffer = lineBuffer.slice(newlineIndex + 1);
+
+        if (line.startsWith('$')) {
+            console.log('Trame complète :', line);
+            parseNMEASentence(line);
+            drawTrace(windyMap);
+            drawBoatMarker(windyMap);
+            updateMapPosition(windyMap);
+            if (follow==1) {
+                centerMap(windyMap);
             }
+        }
+    }
+}
+
+
+
+
+
         } catch (err) {
             error = `Erreur de connexion: ${err.message || err}`;
             console.error('Erreur de connexion au port COM:', err);
@@ -115,89 +136,232 @@
             }
         }
     }
-
-    // Fonction pour analyser les trames GPS et extraire la position
-    function parseGPSData(data: string) {
-        gpsData = data;
-
-        // Extrait la latitude et la longitude d'une trame NMEA (GNRMC)
-        const regex = /\$GNRMC,(\d{6}\.\d+),([AV]),(\d{2})(\d{2}\.\d+),([NS]),(\d{3})(\d{2}\.\d+),([EW]),(\d+\.\d+)?,(\d+\.\d+)?,(\d{6}),(-?\d+\.\d+)?,([EW])?,([ADEMSN])?\*/;
-        const match = regex.exec(data);
-
-        if (match) {
-            // Conversion des coordonnées en format décimal
-            const latDeg = parseFloat(match[3]);
-            const latMin = parseFloat(match[4]);
-            const latHem = match[5];
-            const lonDeg = parseFloat(match[6]);
-            const lonMin = parseFloat(match[7]);
-            const lonHem = match[8];
-            cog = match[9];
-            sog = match[10];
-            dev = match[12];
-            dir = match[13];
+async function deco() {history.go(0);}
 
 
-            latitude = ((latDeg + latMin / 60) * (latHem === 'S' ? -1 : 1)).toFixed(6);
-            longitude = ((lonDeg + lonMin / 60) * (lonHem === 'W' ? -1 : 1)).toFixed(6);
-if (latitude && longitude) {
-    addMarkerOnMap(parseFloat(latitude), parseFloat(longitude));
+function parseLat(val, dir) {
+    const d = parseInt(val.slice(0, 2), 10);
+    const m = parseFloat(val.slice(2));
+    let lat = d + m / 60;
+    if (dir === 'S') lat *= -1;
+    return lat;
 }
+
+function parseLon(val, dir) {
+    const d = parseInt(val.slice(0, 3), 10);
+    const m = parseFloat(val.slice(3));
+    let lon = d + m / 60;
+    if (dir === 'W') lon *= -1;
+    return lon;
+}
+
+function centerMap(map){map.setView([gpsState.lat, gpsState.lon]);}
+
+function parseNMEASentence(sentence) {
+    const parts = sentence.split(',');
+    if (sentence.startsWith('$GPRMC') || sentence.startsWith('$GNRMC')) {
+        if (parts[2] === 'A') {
+            gpsState.lat = parseLat(parts[3], parts[4]);
+            gpsState.lon = parseLon(parts[5], parts[6]);
+            gpsState.sog = parseFloat(parts[7]);
+            gpsState.cog = parseFloat(parts[8]);
+        }
+    } else if (sentence.startsWith('$GPGLL')) {
+        gpsState.lat = parseLat(parts[1], parts[2]);
+        gpsState.lon = parseLon(parts[3], parts[4]);
+    } else if (sentence.startsWith('$GPGGA')) {
+        gpsState.lat = parseLat(parts[2], parts[3]);
+        gpsState.lon = parseLon(parts[4], parts[5]);
+    } else if (sentence.startsWith('$GPVTG')) {
+        gpsState.cog = parseFloat(parts[3]);
+        gpsState.sog = parseFloat(parts[7]);
+    }
+if (gpsState.lat && gpsState.lon) {
+    if (!gpsState.cog || isNaN(gpsState.cog)) {
+        if (lastLat !== null && lastLon !== null) {
+            gpsState.cog = computeCOG(lastLat, lastLon, gpsState.lat, gpsState.lon);
         }
     }
-function addMarkerOnMap(lat, lon) {
-    if (map) {
-markerLayer.clearLayers();
-        // Crée le marqueur avec la popup contenant une icône qui tourne
+    lastLat = gpsState.lat;
+    lastLon = gpsState.lon;
+}
+}
 
-                const customIcon = L.divIcon({
-            className: 'custom-marker', // Classe CSS pour styliser
-            html: `
-                <div style="display: flex; align-items: center; flex-direction: column;">
-                    <div style="font-size: 24px; animation: spin 2s linear infinite; color: black;">
-                        <i class="fa-solid fa-location-crosshairs"></i>
-                    </div>
-                    </div>
-            `,
-            iconSize: [30, 42], // Taille approximative
-            iconAnchor: [15, 42], // Ancre pour alignement (base du marqueur)
-        });
 
-        // Ajoute le marqueur à la carte
-        //const marker = L.marker([lat, lon], { icon: customIcon }).addTo(map);
-        const marker = L.marker([lat, lon], { icon: customIcon }).addTo(markerLayer);   
-} else {
-        console.error("Carte Windy non disponible !");
+function computeCOG(lat1, lon1, lat2, lon2) {
+    const toRad = deg => deg * Math.PI / 180;
+    const toDeg = rad => rad * 180 / Math.PI;
+
+    const dLon = toRad(lon2 - lon1);
+    const φ1 = toRad(lat1);
+    const φ2 = toRad(lat2);
+
+    const y = Math.sin(dLon) * Math.cos(φ2);
+    const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(dLon);
+    let brng = Math.atan2(y, x);
+    brng = toDeg(brng);
+    return (brng + 360) % 360; // Normalisation entre 0 et 360°
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+let boatMarker = null;
+function drawBoatMarker(map) {
+    if (!gpsState.lat || !gpsState.lon || isNaN(gpsState.cog)) return;
+
+    const position = L.latLng(gpsState.lat, gpsState.lon);
+    const course = gpsState.cog; // cog = course over ground
+
+    const icon = L.divIcon({
+        className: '',
+        html: `
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 100 100" style="transform: rotate(${course}deg);">
+                <polygon points="50,0 90,100 50,80 10,100" fill="red" stroke="black" stroke-width="3"/>
+            </svg>
+        `,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20] // Centre de rotation
+    });
+
+    if (!boatMarker) {
+        boatMarker = L.marker(position, { icon }).addTo(map);
+    } else {
+        boatMarker.setLatLng(position);
+        boatMarker.setIcon(icon);
     }
 }
 
-    export const onopen = (_params: unknown) => {
-        // Votre plugin a été ouvert avec des paramètres
+function followship(){
+    if (follow==1){
+        follow=0
+    }
+    else{
+        follow=1
+        }
+}
+
+
+function drawTrace(map) {
+    if (!gpsState.lat || !gpsState.lon) return;
+    const newPoint = [gpsState.lat, gpsState.lon];
+    gpsState.trace.push(newPoint);
+    if (!tracePolyline) {
+        tracePolyline = L.polyline(gpsState.trace, { color: 'blue' }).addTo(map);
+    } else {
+        tracePolyline.setLatLngs(gpsState.trace);
+    }
+}
+
+function drawCourseVector(map) {
+    if (!gpsState.lat || !gpsState.lon || !gpsState.cog) return;
+    const lengthNm = 0.1;
+    const lengthDeg = lengthNm / 60;
+    const angleRad = (gpsState.cog * Math.PI) / 180;
+    const destLat = gpsState.lat + lengthDeg * Math.cos(angleRad);
+    const destLon = gpsState.lon + lengthDeg * Math.sin(angleRad);
+    if (gpsState.courseVector) map.removeLayer(gpsState.courseVector);
+    gpsState.courseVector = L.polyline([
+        [gpsState.lat, gpsState.lon],
+        [destLat, destLon]
+    ], { color: 'red', weight: 2 }).addTo(map);
+}
+
+function updateMapPosition(map) {
+    if (gpsState.following && gpsState.lat && gpsState.lon) {
+        map.panTo([gpsState.lat, gpsState.lon]);
+    }
+}
+
+function createButtons(map) {
+    const recenterBtn = L.control({ position: 'topleft' });
+    recenterBtn.onAdd = function () {
+        const btn = L.DomUtil.create('button', 'recenter-btn');
+        btn.innerText = 'Recenter';
+        btn.onclick = () => {
+            if (gpsState.lat && gpsState.lon) {
+                map.setView([gpsState.lat, gpsState.lon]);
+            }
+        };
+        return btn;
     };
+    recenterBtn.addTo(map);
 
-    onMount(() => {
-        // Votre plugin a été monté
-        window.addEventListener('beforeunload', cleanup);
-    });
+    const followBtn = L.control({ position: 'topleft' });
+    followBtn.onAdd = function () {
+        const btn = L.DomUtil.create('button', 'follow-btn');
+        btn.innerText = 'Follow Boat';
+        btn.onclick = () => {
+            gpsState.following = !gpsState.following;
+            btn.innerText = gpsState.following ? 'Unfollow Boat' : 'Follow Boat';
+        };
+        return btn;
+    };
+    followBtn.addTo(map);
+}
 
-    onDestroy(() => {
-        // Votre plugin a été détruit, nettoyage
-        cleanup();
-        window.removeEventListener('beforeunload', cleanup);
-    });
+function onSerialData(line, map) {
+    parseNMEASentence(line);
+    if (gpsState.lat && gpsState.lon) {
+        drawTrace(map);
+        drawCourseVector(map);
+        updateMapPosition(map);
+    }
+}
+
+async function setupSerial(map) {
+    try {
+        const port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 4800 });
+        const reader = port.readable.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+            lines.forEach(line => onSerialData(line.trim(), map));
+        }
+    } catch (err) {
+        console.error('Serial error:', err);
+    }
+}
+
+onMount(() => {
+window.addEventListener('beforeunload', cleanup);
+windyMap = map;
+createButtons(windyMap);
+});
+
+onDestroy (() => {
+cleanup();
+window.removeEventListener('beforeunload', cleanup);
+});
 </script>
 
-<style lang="less">
-    .gps-info {
-        margin-top: 20px;
-        background-color: #f0f0f0;
-        padding: 10px;
-        border-radius: 5px;
-    }
-
-    .error {
-        color: red;
-        margin-top: 20px;
-    }
+<style>
+button.recenter-btn,
+button.follow-btn {
+    background-color: white;
+    border: 1px solid #ccc;
+    padding: 5px;
+    margin: 5px;
+    cursor: pointer;
+}
 </style>
+
+<div id="windy"></div>
+
 
