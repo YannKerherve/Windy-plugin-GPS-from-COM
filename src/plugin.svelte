@@ -13,8 +13,7 @@
 <p> A plugin by <a href="https://github.com/YannKerherve">Yann Kerhervé</a></p>
 <p> <center>🛳️</center></p>
 
-<p> Frame: $GNRMC ;
-<label for="baudrate">Baud Rate:</label>
+<p><label for="baudrate">Baud Rate:</label>
 <select name="baurate" id="baudrate">
   <option value="115200">115200</option>
   <option value="74880">74880</option>
