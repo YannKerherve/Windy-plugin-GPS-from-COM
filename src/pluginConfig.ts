@@ -7,7 +7,7 @@ const config: ExternalPluginConfig = {
     title: 'GPS from COM',
     description: 'GPS Position from COM port.',
     author: 'Yann Kerherve (ENSM)',
-    repository: 'https://github.com/windycom/windy-plugin-template',
+    repository: 'https://github.com/YannKerherve/Windy-plugin-GPS-from-COM',
     desktopUI: 'rhpane',
     mobileUI: 'fullscreen',
     routerPath: '/gpsfromcom',
